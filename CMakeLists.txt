@@ -44,8 +44,7 @@ target_include_directories(bjj_timer_gui PRIVATE
   ${LVGL_DIR}
 )
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(SDL2 REQUIRED SDL2)
+find_package(SDL2 REQUIRED)
 
 target_link_libraries(bjj_timer_gui
   PRIVATE
