@@ -24,9 +24,10 @@ make
 
 ### LVGL GUI
 ```bash
-sudo apt install liblgpio-dev cmake
-./setup_lvgl.sh   # or: git submodule add https://github.com/lvgl/lvgl.git lvgl && git submodule update --init
-mkdir -p build && cd build && cmake .. && make
+sudo apt install liblgpio-dev cmake libevdev-dev
+bash setup_lvgl.sh   # or: git submodule add https://github.com/lvgl/lvgl.git lvgl && git submodule update --init
+bash build_gui.sh    # use this on Raspberry Pi (handles aarch64 Helium workaround)
+# Or manually: mkdir -p build && cd build && cmake .. && make
 ```
 
 ## Run
