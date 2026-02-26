@@ -121,9 +121,14 @@
 #define LV_FONT_DEFAULT &lv_font_montserrat_48
 
 /*====================
- * LINUX FRAMEBUFFER
+ * SDL (windowed - works with desktop, VNC)
  *====================*/
-#define LV_USE_LINUX_FBDEV 1
+#define LV_USE_SDL 1
+
+/*====================
+ * LINUX FRAMEBUFFER (hangs on Pi - use SDL instead)
+ *====================*/
+#define LV_USE_LINUX_FBDEV 0
 #if LV_USE_LINUX_FBDEV
 #define LV_LINUX_FBDEV_BSD 0
 #define LV_LINUX_FBDEV_RENDER_MODE LV_DISPLAY_RENDER_MODE_DIRECT

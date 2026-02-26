@@ -44,10 +44,14 @@ target_include_directories(bjj_timer_gui PRIVATE
   ${LVGL_DIR}
 )
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(SDL2 REQUIRED SDL2)
+
 target_link_libraries(bjj_timer_gui
   PRIVATE
   lvgl
   lgpio
+  SDL2::SDL2
   pthread
 )
 

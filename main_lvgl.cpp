@@ -91,6 +91,7 @@ int main(int argc, char* argv[]) {
     fprintf(stderr, "[bjj_timer_gui] Main loop running (Ctrl+C to exit)\n");
     unsigned loop_count = 0;
     while (g_running) {
+        if (!lvgl_port_pump_events()) g_running = 0;
         lvgl_port_encoder_poll();
         lv_timer_handler();
         usleep(5000);

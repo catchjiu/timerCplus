@@ -35,6 +35,9 @@ lv_group_t* lvgl_port_get_group(void);
 // Must be called every main loop - polls GPIO encoder into LVGL
 void lvgl_port_encoder_poll(void);
 
+// Pump SDL events (when using SDL). Returns 0 if app should quit.
+int lvgl_port_pump_events(void);
+
 // Set encoder delta (from hardware callback)
 void lvgl_port_encoder_add_delta(int delta);
 

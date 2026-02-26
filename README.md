@@ -24,7 +24,7 @@ make
 
 ### LVGL GUI
 ```bash
-sudo apt install liblgpio-dev cmake libevdev-dev
+sudo apt install liblgpio-dev cmake libevdev-dev libsdl2-dev
 bash setup_lvgl.sh   # or: git submodule add https://github.com/lvgl/lvgl.git lvgl && git submodule update --init
 bash build_gui.sh    # use this on Raspberry Pi (handles aarch64 Helium workaround)
 # Or manually: mkdir -p build && cd build && cmake .. && make
@@ -33,7 +33,8 @@ bash build_gui.sh    # use this on Raspberry Pi (handles aarch64 Helium workarou
 ## Run
 
 **CLI:** `sudo ./bjj_timer`  
-**LVGL GUI:** `sudo ./build/bjj_timer_gui` (uses `/dev/fb0`, full-screen)
+**LVGL GUI:** `./build/bjj_timer_gui` (SDL window, works with desktop/VNC)
+- For GPIO (encoder, buzzer): `sudo usermod -aG gpio $USER` then re-login, or run with `sudo`
 
 No daemon required—lgpio runs directly.
 

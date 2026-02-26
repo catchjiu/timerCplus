@@ -1,5 +1,5 @@
 /**
- * LVGL Port - Framebuffer Display + GPIO Encoder
+ * LVGL Port - SDL Window (desktop) or Framebuffer (embedded)
  */
 
 #include "lvgl_port.hpp"
@@ -11,6 +11,10 @@
 #include <cerrno>
 #include <fcntl.h>
 #include <unistd.h>
+
+#if LV_USE_SDL
+#include <SDL2/SDL.h>
+#endif
 
 static lv_display_t* g_disp = nullptr;
 static lv_indev_t* g_indev = nullptr;
@@ -52,28 +56,23 @@ extern "C" int lvgl_port_init(int gpio_handle, lvgl_encoder_cb_t encoder_cb) {
     lv_init();
     fprintf(stderr, "[lvgl_port] lv_init ok\n");
 
-#if LV_USE_LINUX_FBDEV
+#if LV_USE_SDL
+    fprintf(stderr, "[lvgl_port] SDL window create 800x480...\n");
+    g_disp = lv_sdl_window_create(800, 480);
+    if (!g_disp) {
+        fprintf(stderr, "[lvgl_port] SDL create FAILED\n");
+        return -1;
+    }
+    lv_sdl_window_set_title(g_disp, "CATCH JIU JITSU - Timer");
+    fprintf(stderr, "[lvgl_port] SDL ok\n");
+#elif LV_USE_LINUX_FBDEV
     fprintf(stderr, "[lvgl_port] fbdev create...\n");
-    fflush(stderr);
     g_disp = lv_linux_fbdev_create();
     if (!g_disp) {
         fprintf(stderr, "[lvgl_port] fbdev create FAILED\n");
         return -1;
     }
-    fprintf(stderr, "[lvgl_port] fbdev create ok, testing /dev/fb0 access...\n");
-    fflush(stderr);
-    int fd = open("/dev/fb0", O_RDWR);
-    if (fd >= 0) {
-        fprintf(stderr, "[lvgl_port] /dev/fb0 open ok, closing\n");
-        close(fd);
-    } else {
-        fprintf(stderr, "[lvgl_port] /dev/fb0 open FAILED errno=%d\n", errno);
-    }
-    fflush(stderr);
-    fprintf(stderr, "[lvgl_port] set_file...\n");
-    fflush(stderr);
-    lv_result_t r = lv_linux_fbdev_set_file(g_disp, "/dev/fb0");
-    fprintf(stderr, "[lvgl_port] set_file result=%d\n", (int)(r));
+    lv_linux_fbdev_set_file(g_disp, "/dev/fb0");
     lv_linux_fbdev_set_force_refresh(g_disp, true);
 #endif
 
@@ -130,6 +129,16 @@ extern "C" lv_group_t* lvgl_port_get_group(void) {
 
 extern "C" void lvgl_port_encoder_poll(void) {
     if (g_encoder) g_encoder->poll();
+}
+
+extern "C" int lvgl_port_pump_events(void) {
+#if LV_USE_SDL
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_QUIT) return 0;
+    }
+#endif
+    return 1;
 }
 
 extern "C" void lvgl_port_encoder_add_delta(int delta) {
