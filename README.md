@@ -5,7 +5,7 @@ Professional Brazilian Jiu-Jitsu gym timer with rotary encoder control and passi
 ## Hardware Requirements
 
 - **Raspberry Pi** 5, 4, 3, or Zero 2
-- **Passive Buzzer** → GPIO 22 (Physical Pin 15), GND
+- **Passive Buzzer** → Signal: Physical 16 (GPIO 23), GND: Physical 14
 - **Rotary Encoder** (KY-040):
   - CLK → Physical 11 (GPIO 17)
   - DT  → Physical 12 (GPIO 18)

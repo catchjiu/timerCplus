@@ -21,8 +21,8 @@ namespace bjj {
 // ============================================================================
 // BUZZER CONFIGURATION
 // ============================================================================
-// Passive Buzzer: Signal->BUZZER_PIN (Phy.15), Other lead->GND
-constexpr unsigned BUZZER_PIN = 22;  // Physical pin 15 (GPIO 18 used by encoder DT)
+// Passive Buzzer: Signal->Phy.16, GND->Phy.14, (Phy.2=5V optional)
+constexpr unsigned BUZZER_PIN = 23;  // Physical pin 16
 
 // Tone frequencies (Hz) - BJJ Style
 namespace Tones {
