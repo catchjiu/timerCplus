@@ -6,20 +6,11 @@
 #pragma once
 
 #include "hardware.hpp"
+#include <lvgl.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-struct _lv_display_t;
-struct _lv_indev_t;
-struct _lv_indev_data_t;
-struct _lv_group_t;
-
-typedef struct _lv_display_t lv_display_t;
-typedef struct _lv_indev_t lv_indev_t;
-typedef struct _lv_indev_data_t lv_indev_data_t;
-typedef struct _lv_group_t lv_group_t;
 
 // Encoder event callback: void fn(int delta, bool pressed, bool long_press)
 typedef void (*lvgl_encoder_cb_t)(int delta, bool pressed, bool long_press);
