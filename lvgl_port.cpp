@@ -8,6 +8,9 @@
 #include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <cerrno>
+#include <fcntl.h>
+#include <unistd.h>
 
 static lv_display_t* g_disp = nullptr;
 static lv_indev_t* g_indev = nullptr;
@@ -57,7 +60,17 @@ extern "C" int lvgl_port_init(int gpio_handle, lvgl_encoder_cb_t encoder_cb) {
         fprintf(stderr, "[lvgl_port] fbdev create FAILED\n");
         return -1;
     }
-    fprintf(stderr, "[lvgl_port] fbdev create ok, set_file...\n");
+    fprintf(stderr, "[lvgl_port] fbdev create ok, testing /dev/fb0 access...\n");
+    fflush(stderr);
+    int fd = open("/dev/fb0", O_RDWR);
+    if (fd >= 0) {
+        fprintf(stderr, "[lvgl_port] /dev/fb0 open ok, closing\n");
+        close(fd);
+    } else {
+        fprintf(stderr, "[lvgl_port] /dev/fb0 open FAILED errno=%d\n", errno);
+    }
+    fflush(stderr);
+    fprintf(stderr, "[lvgl_port] set_file...\n");
     fflush(stderr);
     lv_result_t r = lv_linux_fbdev_set_file(g_disp, "/dev/fb0");
     fprintf(stderr, "[lvgl_port] set_file result=%d\n", (int)(r));
