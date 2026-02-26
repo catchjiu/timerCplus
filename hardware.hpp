@@ -117,9 +117,9 @@ public:
         int dt  = readPin(ENCODER_DT);
         int sw  = readPin(ENCODER_SW);
         
-        // Quadrature decode on CLK edges
+        // Quadrature decode on CLK edges (inverted: CW=+1, CCW=-1)
         if (clk != lastClk_) {
-            int delta = (clk == dt) ? 1 : -1;
+            int delta = (clk == dt) ? -1 : 1;
             lastClk_ = clk;
             lastDt_ = dt;
             if (rotateCb_) rotateCb_(delta);

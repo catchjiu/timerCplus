@@ -14,54 +14,52 @@
 #include <atomic>
 #include <mutex>
 #include <csignal>
+#include <string>
 
 using namespace bjj;
 
 // ============================================================================
-// ANSI ESCAPE CODES - Beautiful CLI
+// ANSI - Professional dark theme
 // ============================================================================
 namespace ansi {
-    const char* RESET    = "\033[0m";
-    const char* BOLD     = "\033[1m";
-    const char* DIM      = "\033[2m";
+    const char* R       = "\033[0m";
+    const char* BOLD    = "\033[1m";
+    const char* DIM     = "\033[2m";
+    const char* INV     = "\033[7m";
     
-    const char* FG_BLACK   = "\033[30m";
-    const char* FG_RED     = "\033[31m";
-    const char* FG_GREEN   = "\033[32m";
-    const char* FG_YELLOW  = "\033[33m";
-    const char* FG_BLUE    = "\033[34m";
-    const char* FG_MAGENTA = "\033[35m";
-    const char* FG_CYAN    = "\033[36m";
-    const char* FG_WHITE   = "\033[37m";
+    const char* WHITE   = "\033[97m";
+    const char* GRAY    = "\033[90m";
+    const char* RED     = "\033[91m";
+    const char* GREEN   = "\033[92m";
+    const char* YELLOW  = "\033[93m";
+    const char* BLUE    = "\033[94m";
+    const char* MAGENTA = "\033[95m";
+    const char* CYAN    = "\033[96m";
     
-    const char* BG_RED     = "\033[41m";
-    const char* BG_GREEN   = "\033[42m";
-    const char* BG_YELLOW  = "\033[43m";
-    const char* BG_BLUE    = "\033[44m";
+    const char* BG_DARK = "\033[48;5;235m";
+    const char* BG_DKR  = "\033[48;5;232m";
     
-    void clearScreen() { std::cout << "\033[2J\033[H"; }
-    void hideCursor() { std::cout << "\033[?25l"; }
-    void showCursor() { std::cout << "\033[?25h"; }
+    void clear()   { std::cout << "\033[2J\033[H\033[40m"; }
+    void hideCur() { std::cout << "\033[?25l"; }
+    void showCur() { std::cout << "\033[?25h"; }
 }
 
 // ============================================================================
-// LARGE 7-SEGMENT STYLE DIGITS (for clock display)
+// LARGE LED-STYLE DIGITS (7 lines, professional)
 // ============================================================================
-// Each digit is 5 lines tall, 5 chars wide
-static const char* DIGITS[][5] = {
-    {" ### ", "#   #", "#   #", "#   #", " ### "},
-    {"    #", "    #", "    #", "    #", "    #"},
-    {" ####", "    #", " ####", "#    ", " ####"},
-    {" ####", "    #", " ####", "    #", " ####"},
-    {"#   #", "#   #", " ####", "    #", "    #"},
-    {" ####", "#    ", " ####", "    #", " ####"},
-    {" ####", "#    ", " ####", "#   #", " ####"},
-    {" ####", "    #", "    #", "    #", "    #"},
-    {" ### ", "#   #", " ### ", "#   #", " ### "},
-    {" ####", "#   #", " ####", "    #", " ####"},
+static const char* LED[][7] = {
+    {" ███████ ", "██     ██", "██     ██", "██     ██", "██     ██", "██     ██", " ███████ "},
+    {"      ██ ", "      ██ ", "      ██ ", "      ██ ", "      ██ ", "      ██ ", "      ██ "},
+    {" ███████ ", "      ██ ", "      ██ ", " ███████ ", "██       ", "██       ", " ███████ "},
+    {" ███████ ", "      ██ ", "      ██ ", " ███████ ", "       ██", "       ██", " ███████ "},
+    {"██     ██", "██     ██", "██     ██", " ███████ ", "      ██ ", "      ██ ", "      ██ "},
+    {" ███████ ", "██       ", "██       ", " ███████ ", "       ██", "       ██", " ███████ "},
+    {" ███████ ", "██       ", "██       ", " ███████ ", "██     ██", "██     ██", " ███████ "},
+    {" ███████ ", "      ██ ", "      ██ ", "      ██ ", "      ██ ", "      ██ ", "      ██ "},
+    {" ███████ ", "██     ██", "██     ██", " ███████ ", "██     ██", "██     ██", " ███████ "},
+    {" ███████ ", "██     ██", "██     ██", " ███████ ", "       ██", "       ██", " ███████ "},
 };
-
-static const char* COLON[] = {"   ", " # ", "   ", " # ", "   "};
+static const char* LED_COLON[] = {"   ", " █ ", "   ", " █ ", "   ", " █ ", "   "};
 
 // ============================================================================
 // GLOBAL STATE
@@ -73,130 +71,157 @@ static std::atomic<bool> g_longPress{false};
 static std::mutex g_displayMutex;
 static Buzzer* g_buzzer = nullptr;
 static TimerLogic* g_timer = nullptr;
-static int g_gpioHandle = -1;  // lgpio chip handle
+static int g_gpioHandle = -1;
+
+void onRotate(int delta) { g_rotateDelta += delta; }
+void onPress(bool isLong) { isLong ? (void)(g_longPress = true) : (void)(g_shortPress = true); }
 
 // ============================================================================
-// ENCODER CALLBACKS (called from ISR - set flags only)
+// RENDER LED CLOCK
 // ============================================================================
-void onRotate(int delta) {
-    g_rotateDelta += delta;
-}
-
-void onPress(bool isLong) {
-    if (isLong) {
-        g_longPress = true;
-    } else {
-        g_shortPress = true;
-    }
-}
-
-// ============================================================================
-// RENDER LARGE CLOCK
-// ============================================================================
-void renderLargeClock(unsigned seconds, std::ostream& out) {
-    unsigned m = seconds / 60;
-    unsigned s = seconds % 60;
-    int d0 = m / 10, d1 = m % 10;
-    int d2 = s / 10, d3 = s % 10;
+void renderClock(unsigned sec, const char* color, std::ostream& out) {
+    unsigned m = sec / 60, s = sec % 60;
+    int d[] = { static_cast<int>(m/10), static_cast<int>(m%10), static_cast<int>(s/10), static_cast<int>(s%10) };
     
-    for (int row = 0; row < 5; ++row) {
-        out << "    ";
-        for (int c = 0; c < 5; ++c) out << DIGITS[d0][row][c];
-        out << " ";
-        for (int c = 0; c < 5; ++c) out << DIGITS[d1][row][c];
-        out << " ";
-        for (int c = 0; c < 3; ++c) out << COLON[row][c];
-        out << " ";
-        for (int c = 0; c < 5; ++c) out << DIGITS[d2][row][c];
-        out << " ";
-        for (int c = 0; c < 5; ++c) out << DIGITS[d3][row][c];
+    out << color;
+    for (int row = 0; row < 7; ++row) {
+        out << "        ";
+        out << LED[d[0]][row] << " " << LED[d[1]][row];
+        out << LED_COLON[row];
+        out << LED[d[2]][row] << " " << LED[d[3]][row];
         out << "\n";
     }
+    out << ansi::R;
 }
 
 // ============================================================================
-// RENDER FULL DISPLAY
+// PROFESSIONAL DISPLAY
 // ============================================================================
 void renderDisplay(const DisplayInfo& info) {
     std::lock_guard<std::mutex> lock(g_displayMutex);
-    ansi::clearScreen();
+    ansi::clear();
     
-    std::cout << ansi::BOLD << ansi::FG_CYAN
-              << "  ╔══════════════════════════════════════╗\n"
-              << "  ║       BJJ GYM TIMER - OSS!           ║\n"
-              << "  ╚══════════════════════════════════════╝\n" << ansi::RESET;
+    const int W = 52;
+    auto line = [W](const std::string& s, int visibleLen = -1) {
+        int v = visibleLen >= 0 ? visibleLen : static_cast<int>(s.size());
+        int left = (W - 2 - v) / 2;
+        int right = W - 2 - v - left;
+        std::cout << " " << ansi::GRAY << "│" << ansi::R;
+        std::cout << std::string(std::max(0, left), ' ') << s << std::string(std::max(0, right), ' ');
+        std::cout << ansi::GRAY << "│" << ansi::R << "\n";
+    };
     
+    auto boxTop = [W]() {
+        std::cout << " " << ansi::GRAY << "┌" << std::string(W-2, '─') << "┐" << ansi::R << "\n";
+    };
+    auto footer = [W]() {
+        std::cout << " " << ansi::GRAY << "└" << std::string(W-2, '─') << "┘" << ansi::R << "\n";
+    };
+    
+    // Header
+    std::cout << "\n ";
+    std::cout << ansi::GRAY << "┌" << std::string(W-2, '─') << "┐" << ansi::R << "\n";
+    std::cout << " " << ansi::GRAY << "│" << ansi::R;
+    std::cout << std::string((W-18)/2, ' ') << ansi::BOLD << ansi::WHITE << "BJJ GYM TIMER" << ansi::R;
+    std::cout << std::string(W-18-(W-18)/2, ' ') << ansi::GRAY << "│" << ansi::R << "\n";
+    std::cout << " " << ansi::GRAY << "└" << std::string(W-2, '─') << "┘" << ansi::R << "\n\n";
+    
+    boxTop();
     switch (info.state) {
         case TimerState::MENU: {
-            std::cout << "\n  " << ansi::DIM << "Rotate: Select Mode   Press: Confirm" << ansi::RESET << "\n\n";
-            std::cout << "        " << ansi::BG_BLUE << ansi::FG_WHITE << ansi::BOLD
-                      << "  " << info.menuLabel << "  " << ansi::RESET << "\n\n";
+            line("");
+            line(std::string(ansi::DIM) + "Rotate to select  ·  Press to confirm" + ansi::R, 37);
+            line("");
+            std::string mode = "  " + info.menuLabel + "  ";
+            std::cout << " " << ansi::GRAY << "│" << ansi::R;
+            std::cout << std::string((W-2-static_cast<int>(mode.size()))/2, ' ');
+            std::cout << ansi::BLUE << ansi::BOLD << ansi::INV << mode << ansi::R;
+            std::cout << std::string(W-2-static_cast<int>(mode.size())-(W-2-static_cast<int>(mode.size()))/2, ' ');
+            std::cout << ansi::GRAY << "│" << ansi::R << "\n";
+            line("");
+            footer();
             break;
         }
         
         case TimerState::SETUP_WORK:
         case TimerState::SETUP_REST:
         case TimerState::SETUP_ROUNDS: {
+            line("");
             std::string title;
-            if (info.state == TimerState::SETUP_WORK) title = "Round Time";
-            else if (info.state == TimerState::SETUP_REST) title = "Rest Time";
-            else title = (info.mode == TimerMode::DRILLING) ? "Interval (each)" : "Rounds";
+            if (info.state == TimerState::SETUP_WORK) title = "ROUND TIME";
+            else if (info.state == TimerState::SETUP_REST) title = "REST TIME";
+            else title = (info.mode == TimerMode::DRILLING) ? "INTERVAL PER PERSON" : "NUMBER OF ROUNDS";
             
-            std::cout << "\n  " << ansi::DIM << title << ansi::RESET << "\n";
-            std::cout << "  Rotate: Change   Press: Next   Long: Menu\n\n";
-            std::cout << "        " << ansi::FG_GREEN << ansi::BOLD << info.valueLabel << ansi::RESET << "\n\n";
+            line(std::string(ansi::GRAY) + title + ansi::R, static_cast<int>(title.size()));
+            line("");
+            line(std::string(ansi::DIM) + "Rotate: change  ·  Press: next  ·  Hold: menu" + ansi::R, 42);
+            line("");
+            std::cout << " " << ansi::GRAY << "│" << ansi::R;
+            int vw = static_cast<int>(info.valueLabel.size());
+            std::cout << std::string((W-2-vw)/2, ' ');
+            std::cout << ansi::GREEN << ansi::BOLD << info.valueLabel << ansi::R;
+            std::cout << std::string(W-2-vw-(W-2-vw)/2, ' ');
+            std::cout << ansi::GRAY << "│" << ansi::R << "\n";
+            line("");
+            footer();
             break;
         }
         
         case TimerState::PAUSED: {
-            std::cout << "\n\n";
-            std::cout << ansi::FG_RED << ansi::BOLD
-                      << "        ██████  █████  ██    ██ ███████ ███████ ██████  \n"
-                      << "        ██   ██ ██   ██ ██    ██ ██      ██      ██   ██ \n"
-                      << "        ██████  ███████ ██    ██ ███████ ███████ ██████  \n"
-                      << "        ██      ██   ██  ██  ██       ██      ██ ██      \n"
-                      << "        ██      ██   ██   ████   ███████ ███████ ██      \n"
-                      << ansi::RESET << "\n";
-            renderLargeClock(info.secondsRemaining, std::cout);
-            std::cout << "\n  " << ansi::DIM << "Press: Resume   Long: Back to Menu" << ansi::RESET << "\n";
+            line("");
+            std::cout << " " << ansi::GRAY << "│" << ansi::R;
+            std::cout << std::string((W-14)/2, ' ') << ansi::RED << ansi::BOLD << "  PAUSED  " << ansi::R;
+            std::cout << std::string(W-14-(W-14)/2, ' ') << ansi::GRAY << "│" << ansi::R << "\n";
+            line("");
+            std::cout << "\n";
+            renderClock(info.secondsRemaining, ansi::RED, std::cout);
+            line("");
+            line(std::string(ansi::DIM) + "Press: resume  ·  Hold 2 sec: menu" + ansi::R, 33);
+            footer();
             break;
         }
         
         case TimerState::RUNNING:
         case TimerState::FINISHED: {
-            std::string phaseStr;
+            std::string phaseTag, phaseColor;
             if (info.phase == Phase::WORK) {
-                phaseStr = std::string(ansi::BG_GREEN) + ansi::FG_WHITE + " WORK " + ansi::RESET;
+                phaseTag = " WORK "; phaseColor = ansi::GREEN;
             } else if (info.phase == Phase::REST) {
-                phaseStr = std::string(ansi::BG_YELLOW) + ansi::FG_BLACK + " REST " + ansi::RESET;
+                phaseTag = " REST "; phaseColor = ansi::YELLOW;
             } else {
-                phaseStr = std::string(ansi::BG_BLUE) + ansi::FG_WHITE + " SWITCH! " + ansi::RESET;
+                phaseTag = " SWITCH "; phaseColor = ansi::CYAN;
             }
             
+            std::string roundInfo;
             if (info.totalRounds > 1) {
-                std::cout << "\n  Round " << info.currentRound << "/" << info.totalRounds
-                          << "    " << phaseStr << "\n\n";
+                roundInfo = "Round " + std::to_string(info.currentRound) + "/" + std::to_string(info.totalRounds);
             } else if (info.totalRounds == 1) {
-                std::cout << "\n  " << ansi::FG_MAGENTA << "COMPETITION" << ansi::RESET
-                          << "    " << phaseStr << "\n\n";
+                roundInfo = "COMPETITION";
             } else {
-                std::cout << "\n  " << ansi::FG_CYAN << "DRILLING" << ansi::RESET
-                          << "    " << phaseStr << "\n\n";
+                roundInfo = "DRILLING";
             }
             
-            if (info.secondsRemaining <= 10 && info.phase != Phase::REST) {
-                std::cout << ansi::FG_RED << ansi::BOLD;
-            } else {
-                std::cout << ansi::FG_GREEN;
-            }
-            renderLargeClock(info.secondsRemaining, std::cout);
-            std::cout << ansi::RESET;
+            std::cout << " " << ansi::GRAY << "│" << ansi::R;
+            int rw = static_cast<int>(roundInfo.size()), pw = static_cast<int>(phaseTag.size());
+            std::cout << std::string((W-2-rw-pw-2)/2, ' ');
+            std::cout << ansi::WHITE << roundInfo << ansi::R << "  ";
+            std::cout << phaseColor << ansi::BOLD << phaseTag << ansi::R;
+            std::cout << std::string(W-2-rw-pw-2-(W-2-rw-pw-2)/2, ' ');
+            std::cout << ansi::GRAY << "│" << ansi::R << "\n";
+            line("");
+            
+            const char* clockColor = (info.secondsRemaining <= 10 && info.phase != Phase::REST) ? ansi::RED : ansi::GREEN;
+            renderClock(info.secondsRemaining, clockColor, std::cout);
             
             if (info.state == TimerState::FINISHED) {
-                std::cout << "\n  " << ansi::FG_GREEN << ansi::BOLD << "MATCH COMPLETE! OSS!" << ansi::RESET << "\n";
+                line("");
+                std::cout << " " << ansi::GRAY << "│" << ansi::R;
+                std::cout << std::string((W-20)/2, ' ') << ansi::GREEN << ansi::BOLD << " MATCH COMPLETE " << ansi::R;
+                std::cout << std::string(W-20-(W-20)/2, ' ') << ansi::GRAY << "│" << ansi::R << "\n";
             } else {
-                std::cout << "\n  " << ansi::DIM << "Rotate: +/-30s   Press: Pause   Long: Reset" << ansi::RESET << "\n";
+                line(std::string(ansi::DIM) + "Rotate: ±30s  ·  Press: pause  ·  Hold: reset" + ansi::R, 41);
             }
+            footer();
             break;
         }
     }
@@ -205,47 +230,29 @@ void renderDisplay(const DisplayInfo& info) {
 }
 
 // ============================================================================
-// DISPLAY EVENT CALLBACK - also triggers audio
+// DISPLAY + AUDIO
 // ============================================================================
 void onDisplayEvent(const DisplayInfo& info) {
     renderDisplay(info);
-    
     if (!g_buzzer || g_gpioHandle < 0) return;
-    
-    if (info.roundStartDue) {
-        g_buzzer->playStartRound(g_gpioHandle);
-    }
-    if (info.tenSecondWarningDue) {
-        g_buzzer->play10SecondWarning(g_gpioHandle);
-    }
-    if (info.roundEndDue) {
-        g_buzzer->playEndRound(g_gpioHandle);
-    }
-    if (info.switchDue) {
-        g_buzzer->playDrillingSwitch(g_gpioHandle);
-    }
+    if (info.roundStartDue)      g_buzzer->playStartRound(g_gpioHandle);
+    if (info.tenSecondWarningDue) g_buzzer->play10SecondWarning(g_gpioHandle);
+    if (info.roundEndDue)        g_buzzer->playEndRound(g_gpioHandle);
+    if (info.switchDue)          g_buzzer->playDrillingSwitch(g_gpioHandle);
 }
 
-// ============================================================================
-// SIGNAL HANDLER
-// ============================================================================
-void signalHandler(int) {
-    g_running = false;
-}
+void signalHandler(int) { g_running = false; }
 
 // ============================================================================
 // MAIN
 // ============================================================================
 int main(int argc, char* argv[]) {
-    std::cout << "BJJ Gym Timer - Initializing (lgpio for Pi 5)...\n";
+    std::cout << "BJJ Gym Timer - Initializing...\n";
     
-    // Pi 5: gpiochip4. Pi 4/older: gpiochip0
     int h = lgGpiochipOpen(4);
+    if (h < 0) h = lgGpiochipOpen(0);
     if (h < 0) {
-        h = lgGpiochipOpen(0);  // Fallback for Pi 4
-    }
-    if (h < 0) {
-        std::cerr << "ERROR: lgpio open failed. Try: sudo ./bjj_timer\n";
+        std::cerr << "ERROR: lgpio failed. Run: sudo ./bjj_timer\n";
         return 1;
     }
     g_gpioHandle = h;
@@ -263,9 +270,8 @@ int main(int argc, char* argv[]) {
     encoder.attachInterrupts();
     
     signal(SIGINT, signalHandler);
-    ansi::hideCursor();
+    ansi::hideCur();
     
-    // Initial display
     onDisplayEvent(timer.getDisplayInfo());
     
     auto lastTick = std::chrono::steady_clock::now();
@@ -273,37 +279,20 @@ int main(int argc, char* argv[]) {
     
     while (g_running) {
         auto now = std::chrono::steady_clock::now();
-        
-        // Poll encoder (rotary + button)
         encoder.poll();
         
-        // Process encoder inputs (set by poll callbacks)
         int delta = g_rotateDelta.exchange(0);
-        if (delta != 0) {
-            timer.onRotate(delta);
-        }
-        if (g_shortPress.exchange(false)) {
-            timer.onShortPress();
-        }
-        if (g_longPress.exchange(false)) {
-            timer.onLongPress();
-        }
+        if (delta != 0) timer.onRotate(delta);
+        if (g_shortPress.exchange(false)) timer.onShortPress();
+        if (g_longPress.exchange(false)) timer.onLongPress();
         
-        // 1-second tick for countdown
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastTick).count();
-        if (elapsed >= 1000) {
-            lastTick = now;
-            timer.tick();
-        }
+        if (elapsed >= 1000) { lastTick = now; timer.tick(); }
         
-        // Throttle display updates to ~10 Hz
         elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastDisplay).count();
-        if (elapsed >= 100) {
-            lastDisplay = now;
-            renderDisplay(timer.getDisplayInfo());
-        }
+        if (elapsed >= 100) { lastDisplay = now; renderDisplay(timer.getDisplayInfo()); }
         
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));  // 100Hz poll for encoder
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     
     encoder.detachInterrupts();
@@ -311,8 +300,8 @@ int main(int argc, char* argv[]) {
     encoder.freeGpio(g_gpioHandle);
     lgGpioFree(g_gpioHandle, bjj::BUZZER_PIN);
     lgGpiochipClose(g_gpioHandle);
-    ansi::showCursor();
+    ansi::showCur();
     
-    std::cout << "\nBJJ Gym Timer - Shutdown complete. OSS!\n";
+    std::cout << "\nBJJ Gym Timer - Shutdown complete.\n";
     return 0;
 }
