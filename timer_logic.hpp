@@ -68,6 +68,7 @@ struct DisplayInfo {
     unsigned currentRound{0};
     unsigned totalRounds{0};
     unsigned secondsRemaining{0};
+    unsigned phaseTotalSeconds{300};  // Total for current phase (for arc progress)
     
     std::string menuLabel;
     std::string valueLabel;

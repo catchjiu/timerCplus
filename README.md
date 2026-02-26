@@ -1,10 +1,11 @@
 # BJJ Gym Timer for Raspberry Pi
 
-Professional Brazilian Jiu-Jitsu gym timer with rotary encoder control and passive buzzer audio feedback. **Works on Raspberry Pi 5** (and Pi 4/older) using the lgpio library.
+Professional Brazilian Jiu-Jitsu gym timer with rotary encoder control and passive buzzer audio feedback. **Works on Raspberry Pi 5** (and Pi 4/older) using the lgpio library. Supports **CLI** (terminal) and **LVGL GUI** (framebuffer display).
 
 ## Hardware Requirements
 
 - **Raspberry Pi** 5, 4, 3, or Zero 2
+- **HDMI display** (for LVGL GUI) or headless (CLI)
 - **Passive Buzzer** → Signal: Physical 16 (GPIO 23), GND: Physical 14
 - **Rotary Encoder** (KY-040):
   - CLK → Physical 11 (GPIO 17)
@@ -15,16 +16,23 @@ Professional Brazilian Jiu-Jitsu gym timer with rotary encoder control and passi
 
 ## Build
 
+### CLI (default)
 ```bash
 sudo apt install liblgpio-dev
 make
 ```
 
+### LVGL GUI
+```bash
+sudo apt install liblgpio-dev cmake
+./setup_lvgl.sh   # or: git submodule add https://github.com/lvgl/lvgl.git lvgl && git submodule update --init
+mkdir -p build && cd build && cmake .. && make
+```
+
 ## Run
 
-```bash
-sudo ./bjj_timer
-```
+**CLI:** `sudo ./bjj_timer`  
+**LVGL GUI:** `sudo ./build/bjj_timer_gui` (uses `/dev/fb0`, full-screen)
 
 No daemon required—lgpio runs directly.
 

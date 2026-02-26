@@ -284,6 +284,7 @@ DisplayInfo TimerLogic::getDisplayInfo() const {
     info.currentRound = currentRound_;
     info.totalRounds = totalRounds_;
     info.secondsRemaining = secondsRemaining_.load();
+    info.phaseTotalSeconds = (phase_ == Phase::REST) ? getRestSeconds() : getWorkSeconds();
     info.menuLabel = menuLabel_;
     info.valueLabel = valueLabel_;
     info.setupValue = setupValue_;
