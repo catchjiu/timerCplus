@@ -11,6 +11,7 @@
 #include <lvgl.h>
 #include <lgpio.h>
 #include <csignal>
+#include <cstdio>
 #include <cstdlib>
 #include <unistd.h>
 
@@ -49,12 +50,15 @@ int main(int argc, char* argv[]) {
     (void)argc;
     (void)argv;
 
+    fprintf(stderr, "[bjj_timer_gui] Starting...\n");
     int h = lgGpiochipOpen(4);
     if (h < 0) h = lgGpiochipOpen(0);
     if (h < 0) {
+        fprintf(stderr, "[bjj_timer_gui] GPIO init FAILED\n");
         return 1;
     }
     g_gpio_handle = h;
+    fprintf(stderr, "[bjj_timer_gui] GPIO ok (handle=%d)\n", h);
 
     Buzzer buzzer;
     buzzer.init(h);
@@ -64,9 +68,11 @@ int main(int argc, char* argv[]) {
     g_timer = &timer;
 
     if (lvgl_port_init(h, encoder_cb) != 0) {
+        fprintf(stderr, "[bjj_timer_gui] LVGL init FAILED\n");
         lgGpiochipClose(h);
         return 1;
     }
+    fprintf(stderr, "[bjj_timer_gui] LVGL/display ok\n");
 
     g_ui = new BJJTimerUI();
     g_ui->setTimerLogic(&timer);
@@ -82,10 +88,15 @@ int main(int argc, char* argv[]) {
     on_buzzer(timer.getDisplayInfo());
     g_ui->update(timer.getDisplayInfo());
 
+    fprintf(stderr, "[bjj_timer_gui] Main loop running (Ctrl+C to exit)\n");
+    unsigned loop_count = 0;
     while (g_running) {
         lvgl_port_encoder_poll();
         lv_timer_handler();
         usleep(5000);
+        if (++loop_count % 2000 == 0) {
+            fprintf(stderr, "[bjj_timer_gui] alive (%u)\n", loop_count);
+        }
     }
 
     delete g_ui;
