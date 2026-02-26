@@ -21,8 +21,8 @@ namespace bjj {
 // ============================================================================
 // BUZZER CONFIGURATION
 // ============================================================================
-// Passive Buzzer: Signal->BUZZER_PIN, Other lead->GND
-constexpr unsigned BUZZER_PIN = 18;
+// Passive Buzzer: Signal->BUZZER_PIN (Phy.15), Other lead->GND
+constexpr unsigned BUZZER_PIN = 22;  // Physical pin 15 (GPIO 18 used by encoder DT)
 
 // Tone frequencies (Hz) - BJJ Style
 namespace Tones {
@@ -33,12 +33,12 @@ namespace Tones {
 }
 
 // ============================================================================
-// ROTARY ENCODER CONFIGURATION (BCM GPIO)
+// ROTARY ENCODER CONFIGURATION (Physical pins 11, 12, 13)
 // ============================================================================
-// KY-040: CLK->GPIO11, DT->GPIO12, SW->GPIO13, VCC->3.3V, GND->GND
-constexpr unsigned ENCODER_CLK = 11;
-constexpr unsigned ENCODER_DT  = 12;
-constexpr unsigned ENCODER_SW  = 13;
+// KY-040: CLK->Phy.11, DT->Phy.12, SW->Phy.13 | VCC->Phy.1, GND->Phy.6
+constexpr unsigned ENCODER_CLK = 17;  // Physical pin 11
+constexpr unsigned ENCODER_DT  = 18;  // Physical pin 12
+constexpr unsigned ENCODER_SW  = 27;  // Physical pin 13
 constexpr unsigned LONG_PRESS_MS = 2000;
 
 // ============================================================================
