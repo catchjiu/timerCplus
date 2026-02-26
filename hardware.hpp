@@ -9,6 +9,7 @@
 #pragma once
 
 #include <cstdint>
+#include <ctime>
 #include <lgpio.h>
 
 namespace bjj {
@@ -90,7 +91,7 @@ public:
 };
 
 // ============================================================================
-// ROTARY ENCODER DRIVER (Alert-based callbacks)
+// ROTARY ENCODER DRIVER (Polling - reliable on Pi 5)
 // ============================================================================
 class RotaryEncoder {
 public:
@@ -102,64 +103,44 @@ public:
     
     void init(int h) {
         handle_ = h;
+        lgGpioClaimInput(h, LG_SET_PULL_UP, ENCODER_CLK);
         lgGpioClaimInput(h, LG_SET_PULL_UP, ENCODER_DT);
-        lgGpioClaimAlert(h, LG_SET_PULL_UP, LG_BOTH_EDGES, ENCODER_CLK, -1);
-        lgGpioClaimAlert(h, LG_SET_PULL_UP, LG_BOTH_EDGES, ENCODER_SW, -1);
-        lgGpioSetDebounce(h, ENCODER_CLK, 1000);
-        lgGpioSetDebounce(h, ENCODER_DT, 1000);
-        lgGpioSetDebounce(h, ENCODER_SW, 50000);
-        lastClk_ = lgGpioRead(h, ENCODER_CLK) != 0 ? 1 : 0;
-        lastDt_  = lgGpioRead(h, ENCODER_DT) != 0 ? 1 : 0;
+        lgGpioClaimInput(h, LG_SET_PULL_UP, ENCODER_SW);
+        lastClk_ = readPin(ENCODER_CLK);
+        lastDt_  = readPin(ENCODER_DT);
+        lastSw_  = readPin(ENCODER_SW);
     }
     
-    void onAlert(int num_alerts, lgGpioAlert_p alerts, void* /*userdata*/) {
-        for (int i = 0; i < num_alerts && alerts; ++i) {
-            unsigned gpio = alerts[i].report.gpio;
-            int level = alerts[i].report.level;
-            uint64_t tick = alerts[i].report.timestamp;
-            
-            if (gpio == ENCODER_CLK) {
-                int clk = (level == 1) ? 1 : 0;
-                int dt = lgGpioRead(handle_, ENCODER_DT);
-                if (dt < 0) dt = 0;
-                if (clk != lastClk_) {
-                    int delta = (clk == dt) ? 1 : -1;
-                    lastClk_ = clk;
-                    lastDt_ = dt;
-                    if (rotateCb_) rotateCb_(delta);
-                }
-            } else if (gpio == ENCODER_SW) {
-                if (level == 0) {
-                    pressStartTick_ = tick;
-                    swPressed_ = true;
-                } else if (swPressed_) {
-                    swPressed_ = false;
-                    uint64_t duration_ns = tick - pressStartTick_;
-                    bool longPress = (duration_ns >= static_cast<uint64_t>(LONG_PRESS_MS) * 1000000ULL);
-                    if (pressCb_) pressCb_(longPress);
-                }
-            }
+    // Call every main loop iteration - polls encoder and button
+    void poll() {
+        int clk = readPin(ENCODER_CLK);
+        int dt  = readPin(ENCODER_DT);
+        int sw  = readPin(ENCODER_SW);
+        
+        // Quadrature decode on CLK edges
+        if (clk != lastClk_) {
+            int delta = (clk == dt) ? 1 : -1;
+            lastClk_ = clk;
+            lastDt_ = dt;
+            if (rotateCb_) rotateCb_(delta);
+        } else {
+            lastDt_ = dt;
+        }
+        
+        // Button: 0=pressed (active low), 1=released
+        if (sw == 0 && !swPressed_) {
+            swPressed_ = true;
+            pressStartMs_ = nowMs();
+        } else if (sw == 1 && swPressed_) {
+            swPressed_ = false;
+            unsigned duration = nowMs() - pressStartMs_;
+            bool longPress = (duration >= LONG_PRESS_MS);
+            if (pressCb_) pressCb_(longPress);
         }
     }
     
-    static RotaryEncoder* instance_;
-    static void alertFunc(int e, lgGpioAlert_p evt, void* data) {
-        if (e >= 0 && instance_ && evt) {
-            instance_->onAlert(e, evt, data);
-        }
-    }
-    
-    void attachInterrupts() {
-        instance_ = this;
-        lgGpioSetAlertsFunc(handle_, ENCODER_CLK, alertFunc, nullptr);
-        lgGpioSetAlertsFunc(handle_, ENCODER_SW, alertFunc, nullptr);
-    }
-    
-    void detachInterrupts() {
-        lgGpioSetAlertsFunc(handle_, ENCODER_CLK, nullptr, nullptr);
-        lgGpioSetAlertsFunc(handle_, ENCODER_SW, nullptr, nullptr);
-        instance_ = nullptr;
-    }
+    void attachInterrupts() {}   // No-op for polling
+    void detachInterrupts() {}
     
     void freeGpio(int h) {
         lgGpioFree(h, ENCODER_CLK);
@@ -168,14 +149,22 @@ public:
     }
     
 private:
+    int readPin(unsigned gpio) {
+        int v = lgGpioRead(handle_, gpio);
+        return (v > 0) ? 1 : 0;
+    }
+    static unsigned nowMs() {
+        struct timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        return static_cast<unsigned>(ts.tv_sec * 1000ULL + ts.tv_nsec / 1000000);
+    }
+    
     int handle_{0};
     RotateCallback rotateCb_;
     PressCallback pressCb_;
-    int lastClk_{1}, lastDt_{1};
-    uint64_t pressStartTick_{0};
+    int lastClk_{1}, lastDt_{1}, lastSw_{1};
+    unsigned pressStartMs_{0};
     bool swPressed_{false};
 };
-
-inline RotaryEncoder* RotaryEncoder::instance_ = nullptr;
 
 } // namespace bjj

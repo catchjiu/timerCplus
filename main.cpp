@@ -274,7 +274,10 @@ int main(int argc, char* argv[]) {
     while (g_running) {
         auto now = std::chrono::steady_clock::now();
         
-        // Process encoder inputs (from ISR)
+        // Poll encoder (rotary + button)
+        encoder.poll();
+        
+        // Process encoder inputs (set by poll callbacks)
         int delta = g_rotateDelta.exchange(0);
         if (delta != 0) {
             timer.onRotate(delta);
@@ -300,7 +303,7 @@ int main(int argc, char* argv[]) {
             renderDisplay(timer.getDisplayInfo());
         }
         
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));  // 100Hz poll for encoder
     }
     
     encoder.detachInterrupts();
