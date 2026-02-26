@@ -6,12 +6,7 @@
 #pragma once
 
 #include "timer_logic.hpp"
-
-struct _lv_obj_t;
-typedef struct _lv_obj_t lv_obj_t;
-
-struct _lv_timer_t;
-typedef struct _lv_timer_t lv_timer_t;
+#include <lvgl.h>
 
 namespace bjj {
 

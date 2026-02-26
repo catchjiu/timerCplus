@@ -124,7 +124,7 @@ void BJJTimerUI::create(lv_obj_t* parent) {
 }
 
 void BJJTimerUI::tickTimerCb(lv_timer_t* t) {
-    BJJTimerUI* ui = static_cast<BJJTimerUI*>(t->user_data);
+    BJJTimerUI* ui = static_cast<BJJTimerUI*>(lv_timer_get_user_data(t));
     if (!ui->timer_) return;
     ui->timer_->tick();
     DisplayInfo info = ui->timer_->getDisplayInfo();
@@ -225,8 +225,5 @@ void BJJTimerUI::updateArc(unsigned sec, unsigned total, bool isRest) {
     lv_arc_set_value(progressArc_, val);
     lv_obj_set_style_arc_color(progressArc_, lv_color_hex(isRest ? THEME_RED : THEME_GREEN), LV_PART_INDICATOR);
 }
-
-void BJJTimerUI::setTimerLogic(TimerLogic* logic) { timer_ = logic; }
-void BJJTimerUI::setBuzzerCallback(void (*cb)(const DisplayInfo&)) { buzzerCb_ = cb; }
 
 } // namespace bjj
