@@ -1,11 +1,11 @@
-# BJJ Gym Timer - Raspberry Pi
-# Requires: pigpio (sudo apt install pigpio)
+# BJJ Gym Timer - Raspberry Pi 5 (lgpio)
+# Install: sudo apt install liblgpio-dev
 # Build: make
-# Run: sudo ./bjj_timer (pigpio needs root for hardware access)
+# Run: sudo ./bjj_timer
 
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -O2
-LDFLAGS = -lpigpio -lpthread -lrt
+LDFLAGS = -llgpio -lpthread
 
 TARGET = bjj_timer
 SRCS = main.cpp timer_logic.cpp
@@ -23,5 +23,3 @@ $(TARGET): $(OBJS)
 
 clean:
 	rm -f $(OBJS) $(TARGET)
-
-# Note: Run 'sudo pigpiod' before starting the timer if not using systemd

@@ -1,9 +1,8 @@
 /**
  * BJJ Gym Timer - Main Application
- * Raspberry Pi - Rotary Encoder + Passive Buzzer
- * 
+ * Raspberry Pi 5 - Rotary Encoder + Passive Buzzer
+ * Uses lgpio (no daemon required)
  * Run: sudo ./bjj_timer
- * Requires: pigpio daemon (sudo pigpiod)
  */
 
 #include "hardware.hpp"
@@ -74,6 +73,7 @@ static std::atomic<bool> g_longPress{false};
 static std::mutex g_displayMutex;
 static Buzzer* g_buzzer = nullptr;
 static TimerLogic* g_timer = nullptr;
+static int g_gpioHandle = -1;  // lgpio chip handle
 
 // ============================================================================
 // ENCODER CALLBACKS (called from ISR - set flags only)
@@ -210,19 +210,19 @@ void renderDisplay(const DisplayInfo& info) {
 void onDisplayEvent(const DisplayInfo& info) {
     renderDisplay(info);
     
-    if (!g_buzzer) return;
+    if (!g_buzzer || g_gpioHandle < 0) return;
     
     if (info.roundStartDue) {
-        g_buzzer->playStartRound();
+        g_buzzer->playStartRound(g_gpioHandle);
     }
     if (info.tenSecondWarningDue) {
-        g_buzzer->play10SecondWarning();
+        g_buzzer->play10SecondWarning(g_gpioHandle);
     }
     if (info.roundEndDue) {
-        g_buzzer->playEndRound();
+        g_buzzer->playEndRound(g_gpioHandle);
     }
     if (info.switchDue) {
-        g_buzzer->playDrillingSwitch();
+        g_buzzer->playDrillingSwitch(g_gpioHandle);
     }
 }
 
@@ -237,15 +237,21 @@ void signalHandler(int) {
 // MAIN
 // ============================================================================
 int main(int argc, char* argv[]) {
-    std::cout << "BJJ Gym Timer - Initializing...\n";
+    std::cout << "BJJ Gym Timer - Initializing (lgpio for Pi 5)...\n";
     
-    if (gpioInitialise() < 0) {
-        std::cerr << "ERROR: pigpio init failed. Run: sudo pigpiod\n";
+    // Pi 5: gpiochip4. Pi 4/older: gpiochip0
+    int h = lgGpiochipOpen(4);
+    if (h < 0) {
+        h = lgGpiochipOpen(0);  // Fallback for Pi 4
+    }
+    if (h < 0) {
+        std::cerr << "ERROR: lgpio open failed. Try: sudo ./bjj_timer\n";
         return 1;
     }
+    g_gpioHandle = h;
     
     Buzzer buzzer;
-    buzzer.init();
+    buzzer.init(h);
     g_buzzer = &buzzer;
     
     TimerLogic timer;
@@ -253,7 +259,7 @@ int main(int argc, char* argv[]) {
     timer.setEventCallback(onDisplayEvent);
     
     RotaryEncoder encoder(onRotate, onPress);
-    encoder.init();
+    encoder.init(h);
     encoder.attachInterrupts();
     
     signal(SIGINT, signalHandler);
@@ -298,8 +304,10 @@ int main(int argc, char* argv[]) {
     }
     
     encoder.detachInterrupts();
-    buzzer.silence();
-    gpioTerminate();
+    buzzer.silence(g_gpioHandle);
+    encoder.freeGpio(g_gpioHandle);
+    lgGpioFree(g_gpioHandle, bjj::BUZZER_PIN);
+    lgGpiochipClose(g_gpioHandle);
     ansi::showCursor();
     
     std::cout << "\nBJJ Gym Timer - Shutdown complete. OSS!\n";
