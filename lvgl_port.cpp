@@ -50,7 +50,7 @@ extern "C" int lvgl_port_init(int gpio_handle, lvgl_encoder_cb_t encoder_cb) {
     g_disp = lv_linux_fbdev_create();
     if (!g_disp) return -1;
     lv_linux_fbdev_set_file(g_disp, "/dev/fb0");
-    lv_linux_fbdev_set_force_refresh(g_disp, false);
+    lv_linux_fbdev_set_force_refresh(g_disp, true);
 #endif
 
     g_indev = lv_indev_create();
