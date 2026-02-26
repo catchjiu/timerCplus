@@ -6,6 +6,7 @@
 #include <lvgl.h>
 #include <lgpio.h>
 #include <atomic>
+#include <cstdio>
 #include <cstring>
 
 static lv_display_t* g_disp = nullptr;
@@ -44,15 +45,26 @@ extern "C" int lvgl_port_init(int gpio_handle, lvgl_encoder_cb_t encoder_cb) {
     g_gpio_handle = gpio_handle;
     g_encoder_cb = encoder_cb;
 
+    fprintf(stderr, "[lvgl_port] lv_init...\n");
     lv_init();
+    fprintf(stderr, "[lvgl_port] lv_init ok\n");
 
 #if LV_USE_LINUX_FBDEV
+    fprintf(stderr, "[lvgl_port] fbdev create...\n");
+    fflush(stderr);
     g_disp = lv_linux_fbdev_create();
-    if (!g_disp) return -1;
-    lv_linux_fbdev_set_file(g_disp, "/dev/fb0");
+    if (!g_disp) {
+        fprintf(stderr, "[lvgl_port] fbdev create FAILED\n");
+        return -1;
+    }
+    fprintf(stderr, "[lvgl_port] fbdev create ok, set_file...\n");
+    fflush(stderr);
+    lv_result_t r = lv_linux_fbdev_set_file(g_disp, "/dev/fb0");
+    fprintf(stderr, "[lvgl_port] set_file result=%d\n", (int)(r));
     lv_linux_fbdev_set_force_refresh(g_disp, true);
 #endif
 
+    fprintf(stderr, "[lvgl_port] indev create...\n");
     g_indev = lv_indev_create();
     if (!g_indev) return -2;
     lv_indev_set_type(g_indev, LV_INDEV_TYPE_ENCODER);
@@ -62,8 +74,10 @@ extern "C" int lvgl_port_init(int gpio_handle, lvgl_encoder_cb_t encoder_cb) {
     g_group = lv_group_create();
     lv_indev_set_group(g_indev, g_group);
 
+    fprintf(stderr, "[lvgl_port] encoder init...\n");
     g_encoder = new bjj::RotaryEncoder(on_rotate, on_press);
     g_encoder->init(gpio_handle);
+    fprintf(stderr, "[lvgl_port] init complete\n");
 
     return 0;
 }
