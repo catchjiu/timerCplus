@@ -132,6 +132,7 @@ void BJJTimerUI::tickTimerCb(lv_timer_t* t) {
     DisplayInfo info = ui->timer_->getDisplayInfo();
     ui->update(info);
     if (ui->buzzerCb_) ui->buzzerCb_(info);
+    ui->timer_->clearAudioFlags();
 }
 
 void BJJTimerUI::update(const DisplayInfo& info) {

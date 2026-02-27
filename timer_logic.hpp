@@ -99,6 +99,7 @@ public:
     DisplayInfo getDisplayInfo() const;
     TimerState getState() const { return state_; }
     TimerMode getMode() const { return mode_; }
+    void clearAudioFlags();
     
     void setEventCallback(EventCallback cb) { eventCb_ = std::move(cb); }
     

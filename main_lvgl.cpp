@@ -97,8 +97,10 @@ int main(int argc, char* argv[]) {
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
-    on_buzzer(timer.getDisplayInfo());
-    g_ui->update(timer.getDisplayInfo());
+    DisplayInfo initial_info = timer.getDisplayInfo();
+    on_buzzer(initial_info);
+    g_ui->update(initial_info);
+    timer.clearAudioFlags();
 
     lv_refr_now(NULL);
 

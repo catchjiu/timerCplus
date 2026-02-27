@@ -322,17 +322,18 @@ void TimerLogic::notifyDisplay() {
     
     DisplayInfo info = getDisplayInfo();
     if (eventCb_) eventCb_(info);
-    
-    // Clear one-shot audio flags after consumption
-    tenSecondWarningDue_ = false;
-    roundStartDue_ = false;
-    roundEndDue_ = false;
-    switchDue_ = false;
 }
 
 void TimerLogic::playAudioEvents() {
     // Called from main after getDisplayInfo - audio handled in main via Buzzer
     // This is a no-op; audio triggered by flags in DisplayInfo
+}
+
+void TimerLogic::clearAudioFlags() {
+    tenSecondWarningDue_ = false;
+    roundStartDue_ = false;
+    roundEndDue_ = false;
+    switchDue_ = false;
 }
 
 } // namespace bjj
