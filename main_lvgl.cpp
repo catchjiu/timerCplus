@@ -22,8 +22,16 @@ static Buzzer* g_buzzer = nullptr;
 static TimerLogic* g_timer = nullptr;
 static BJJTimerUI* g_ui = nullptr;
 static int g_gpio_handle = -1;
+static volatile sig_atomic_t g_shutdown_requested = 0;
+
+static void ensure_buzzer_off() {
+    if (g_buzzer && g_gpio_handle >= 0) {
+        g_buzzer->silence(g_gpio_handle);
+    }
+}
 
 static void signal_handler(int) {
+    g_shutdown_requested = 1;
     g_running = 0;
 }
 
@@ -65,6 +73,7 @@ int main(int argc, char* argv[]) {
     g_buzzer = &buzzer;
     fprintf(stderr, "[bjj_timer_gui] buzzer test...\n");
     buzzer.tone(h, Tones::AIR_HORN_HIGH, 120);
+    buzzer.silence(h);
 
     TimerLogic timer;
     g_timer = &timer;
@@ -86,6 +95,7 @@ int main(int argc, char* argv[]) {
     });
 
     signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
 
     on_buzzer(timer.getDisplayInfo());
     g_ui->update(timer.getDisplayInfo());
@@ -99,6 +109,9 @@ int main(int argc, char* argv[]) {
         lvgl_port_encoder_poll();
         lv_timer_handler();
         usleep(5000);
+        if (g_shutdown_requested) {
+            ensure_buzzer_off();
+        }
         if (++loop_count % 2000 == 0) {
             fprintf(stderr, "[bjj_timer_gui] alive (%u)\n", loop_count);
         }
@@ -109,7 +122,7 @@ int main(int argc, char* argv[]) {
     g_buzzer = nullptr;
     g_timer = nullptr;
 
-    buzzer.silence(h);
+    ensure_buzzer_off();
     lgGpioFree(h, BUZZER_PIN);
     lvgl_port_deinit(h);
     lgGpiochipClose(h);
