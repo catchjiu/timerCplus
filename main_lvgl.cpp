@@ -88,6 +88,8 @@ int main(int argc, char* argv[]) {
     on_buzzer(timer.getDisplayInfo());
     g_ui->update(timer.getDisplayInfo());
 
+    lv_refr_now(NULL);
+
     fprintf(stderr, "[bjj_timer_gui] Main loop running (Ctrl+C to exit)\n");
     unsigned loop_count = 0;
     while (g_running) {

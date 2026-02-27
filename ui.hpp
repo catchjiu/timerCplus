@@ -10,13 +10,13 @@
 
 namespace bjj {
 
-// Combat Sports theme colors (RGB565)
-#define THEME_BG       0x18E3   // #1A1A1A dark charcoal
-#define THEME_GOLD     0xBD55   // #D4AF37 gold
-#define THEME_WHITE    0xFFFF
-#define THEME_GREEN    0x07E0   // WORK
-#define THEME_RED      0xF800   // REST
-#define THEME_GRAY     0x7BEF
+// Combat Sports theme colors (24-bit for lv_color_hex)
+#define THEME_BG       0x1A1A1A
+#define THEME_GOLD     0xD4AF37
+#define THEME_WHITE    0xFFFFFF
+#define THEME_GREEN    0x00FF00   // WORK
+#define THEME_RED      0xFF0000   // REST
+#define THEME_GRAY     0x808080
 
 class BJJTimerUI {
 public:
