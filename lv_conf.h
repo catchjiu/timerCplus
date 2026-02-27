@@ -1,7 +1,7 @@
 /**
  * LVGL Configuration - BJJ Gym Timer
- * Raspberry Pi /dev/fb0 - Combat Sports Theme
- * Optimized for embedded Linux framebuffer
+ * Raspberry Pi - Combat Sports Theme
+ * Optimized for SDL windowed display
  */
 
 #ifndef LV_CONF_H
@@ -12,8 +12,8 @@
 /*====================
  * COLOR SETTINGS
  *====================*/
-#define LV_COLOR_DEPTH 16
-#define LV_COLOR_16_SWAP 1
+#define LV_COLOR_DEPTH 32
+#define LV_COLOR_16_SWAP 0
 
 /*====================
  * MEMORY
@@ -51,6 +51,7 @@
 #define LV_DRAW_SW_SUPPORT_RGB565 1
 #define LV_DRAW_SW_SUPPORT_RGB888 1
 #define LV_DRAW_SW_SUPPORT_XRGB8888 1
+#define LV_DRAW_SW_SUPPORT_ARGB8888 1
 #define LV_DRAW_SW_DRAW_UNIT_CNT 1
 #endif
 

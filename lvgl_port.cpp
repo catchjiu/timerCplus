@@ -57,13 +57,21 @@ extern "C" int lvgl_port_init(int gpio_handle, lvgl_encoder_cb_t encoder_cb) {
     fprintf(stderr, "[lvgl_port] lv_init ok\n");
 
 #if LV_USE_SDL
-    fprintf(stderr, "[lvgl_port] SDL window create 800x480...\n");
-    g_disp = lv_sdl_window_create(800, 480);
+    int32_t win_w = 800;
+    int32_t win_h = 480;
+    SDL_DisplayMode mode;
+    if (SDL_GetCurrentDisplayMode(0, &mode) == 0) {
+        win_w = mode.w;
+        win_h = mode.h;
+    }
+    fprintf(stderr, "[lvgl_port] SDL window create %dx%d...\n", (int)win_w, (int)win_h);
+    g_disp = lv_sdl_window_create(win_w, win_h);
     if (!g_disp) {
         fprintf(stderr, "[lvgl_port] SDL create FAILED\n");
         return -1;
     }
     lv_sdl_window_set_title(g_disp, "CATCH JIU JITSU - Timer");
+    lv_sdl_window_set_resizeable(g_disp, true);
     fprintf(stderr, "[lvgl_port] SDL ok\n");
 #elif LV_USE_LINUX_FBDEV
     fprintf(stderr, "[lvgl_port] fbdev create...\n");

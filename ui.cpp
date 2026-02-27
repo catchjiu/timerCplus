@@ -86,6 +86,8 @@ void BJJTimerUI::create(lv_obj_t* parent) {
     lv_obj_set_style_arc_width(progressArc_, 12, LV_PART_INDICATOR);
     lv_obj_set_style_arc_color(progressArc_, lv_color_hex(THEME_GRAY), LV_PART_MAIN);
     lv_obj_set_style_arc_color(progressArc_, lv_color_hex(THEME_GREEN), LV_PART_INDICATOR);
+    lv_obj_set_style_bg_opa(progressArc_, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(progressArc_, 0, 0);
     lv_obj_remove_flag(progressArc_, LV_OBJ_FLAG_CLICKABLE);
 
     clockLabel_ = lv_label_create(screenRunning_);

@@ -63,6 +63,8 @@ int main(int argc, char* argv[]) {
     Buzzer buzzer;
     buzzer.init(h);
     g_buzzer = &buzzer;
+    fprintf(stderr, "[bjj_timer_gui] buzzer test...\n");
+    buzzer.tone(h, Tones::AIR_HORN_HIGH, 120);
 
     TimerLogic timer;
     g_timer = &timer;
